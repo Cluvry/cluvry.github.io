@@ -12,33 +12,67 @@
 <body>
     <h1>World Creator</h1>
     <div><canvas id="mainCanvas" width="800" height="600"></canvas></div>
-
-    <table id="brush_control_panel">
+    <table id="control_panel">
         <tr>
             <td>
-                <label>Brush size:</label>
+                <h2>Brush control</h2>
             </td>
             <td>
-                <input id="bsize" type="range" if="bsize" name="bsize" min="10" max="200" step="2">
-            </td>
-            <td rowspan="3">
-                <canvas id="brush_preview" width="100" height="100"></canvas>
+                <h2>World Control</h2>
             </td>
         </tr>
         <tr>
             <td>
-            <label>Brush strenth:</label>
+                <table id="brush_control_panel">
+                    <tr>
+                        <td>
+                            <label>Brush size:</label>
+                        </td>
+                        <td>
+                            <input id="bsize" type="range" if="bsize" name="bsize" min="10" max="200" step="2">
+                        </td>
+                        <td rowspan="3">
+                            <canvas id="brush_preview" width="100" height="100"></canvas>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <label>Brush strenth:</label>
+                        </td>
+                        <td>
+                            <input id="bstrenth" type="range" name="bstrenth" min="10" max="100" step="1">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <label>Brush hardness:</label>
+                        </td>
+                        <td>
+                            <input id="bhardness" type="range" name="bhardness" min="0" max="0.99"
+                                step="0.01">
+                        </td>
+                    </tr>
+                </table>
             </td>
             <td>
-                <input id="bstrenth" type="range" if="bstrenth" name="bstrenth" min="10" max="100" step="1">
-            </td>
-        </tr>
-        <tr>
-            <td>
-                <label>Brush hardness:</label>
-            </td>
-            <td>
-                <input id="bhardness" type="range" if="bhardness" name="bhardness" min="0" max="0.99" step="0.01">
+                <table id="world_control_panel">
+                    <tr>
+                        <td>
+                            <label>Illumination direction</label>
+                        </td>
+                        <td>
+                            <input id="willumination_dir" type="range" name="willumination_dir" min="0" max="0.99" step="0.01">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <label>Water level</label>
+                        </td>
+                        <td>
+                            <input id="wwater_level" type="range" name="wwater_level" min="0" max="0.99" step="0.01">
+                        </td>
+                    </tr>
+                </table>
             </td>
         </tr>
     </table>
