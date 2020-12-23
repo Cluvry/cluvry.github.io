@@ -2,6 +2,8 @@ const canvas = document.getElementById('mainCanvas');
 const ctx = canvas.getContext('2d');
 const cWidth = canvas.width;
 const cHeight = canvas.height;
+const brushPreview = document.getElementById("brush_preview");
+const btx = brushPreview.getContext('2d');
 let mouseX = 0;
 let mouseY = 0;
 let mouseDown = false;
@@ -39,6 +41,51 @@ for (let x = 0; x < cWidth; x++) {
 /*for (let i = 0; i < cHeight*cWidth; i++){
     heightMap.push(MAX_TERRAIN_HEIGHT/2);
 }*/
+
+function showBrush() {
+    ctx.beginPath();
+    ctx.rect(mouseX - brushSize / 2, mouseY - brushSize / 2, brushSize, brushSize);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.rect(mouseX - brushSize / 2 * softnessModifier, mouseY - brushSize / 2 * softnessModifier, brushSize * softnessModifier, brushSize * softnessModifier);
+    ctx.stroke();
+}
+
+function updateBrushPreview() {
+    let id = btx.createImageData(100, 100);
+    let counter = 0;
+    for (let y = 0; y < 100; y++) {
+        for (let x = 0; x < 100; x++) {
+            let fromCenterXl = x / (50 - softnessModifier * 50);
+            let fromCenterXr = (100 - x) / (100 - (50 + softnessModifier * 50));
+            let fromCenterYu = y / (50 - softnessModifier * 50);
+            let fromCenterYd = (100 - y) / (100 - (50 + softnessModifier * 50));
+            let hardness;
+            if (x < 50) {
+                if (y < 50) {
+                    hardness = Math.min(fromCenterXl, fromCenterYu);
+                } else {
+                    hardness = Math.min(fromCenterXl, fromCenterYd);
+                }
+            } else {
+                if (y < 50) {
+                    hardness = Math.min(fromCenterXr, fromCenterYu);
+                } else {
+                    hardness = Math.min(fromCenterXr, fromCenterYd);
+                }
+            }
+            if (hardness > 1) {
+                hardness = 1;
+            }
+            id.data[counter] = 0;
+            id.data[counter + 1] = 0;
+            id.data[counter + 2] = 0;
+            id.data[counter + 3] = Math.floor(255 * hardness * (brushStrenth / 100));
+            counter += 4;
+        }
+    }
+    btx.putImageData(id, 0, 0);
+}
 
 function hsv2rgb(color) {
     let h = color[0] % 1;
@@ -90,13 +137,13 @@ function heightToHSV(height) {
         let ratio = (height - MIN_TERRAIN_HEIGHT) / (MAX_TERRAIN_HEIGHT - MIN_TERRAIN_HEIGHT);
         let hue = MIN_HEIGHT_COLOR_HSV * (1 - ratio);
         hsv = [hue, 1, 1];
-    } 
+    }
     //water
     else {
         let hue = waterHue;
-        let level = Math.floor((height - MIN_TERRAIN_HEIGHT)/waterLevelHeight);
-        let sat = MIN_WATER_SAT + (MAX_WATER_SAT - MIN_WATER_SAT)/WATER_LEVELS*level;
-        hsv = [hue,sat,1];
+        let level = Math.floor((height - MIN_TERRAIN_HEIGHT) / waterLevelHeight);
+        let sat = MIN_WATER_SAT + (MAX_WATER_SAT - MIN_WATER_SAT) / WATER_LEVELS * level;
+        hsv = [hue, sat, 1];
     }
 
     return hsv;
@@ -114,20 +161,33 @@ function generateColorHeightMap() {
         let hsv = heightToHSV(height);
 
         //SHADING
-        if (column > 0 && height >= MIN_TERRAIN_HEIGHT) {
-            let neighbour = heightMap[column - 1][row];
-            let difference = (height - neighbour) / (MAX_TERRAIN_HEIGHT - MIN_TERRAIN_HEIGHT);
-            let depth = (height - MIN_TERRAIN_HEIGHT) / (MAX_TERRAIN_HEIGHT - MIN_TERRAIN_HEIGHT);
+        if (height >= MIN_TERRAIN_HEIGHT) {
+            //HORIZONTAL SHADING
+            if (column > 0) {
+                let neighbour = heightMap[column - 1][row];
+                let difference = (height - neighbour) / (MAX_TERRAIN_HEIGHT - MIN_TERRAIN_HEIGHT);
 
-            if (difference > 0) {
-                hsv[1] -= difference * highlightingPower;
-            } else {
-                hsv[2] += difference * shadingPower;
+                if (difference > 0) {
+                    hsv[1] -= difference * highlightingPower;
+                } else {
+                    hsv[2] += difference * shadingPower;
+                }
             }
+            //VERTICAL SHADING
+            if (row > 0) {
+                let neighbour = heightMap[column][row - 1];
+                let difference = (height - neighbour) / (MAX_TERRAIN_HEIGHT - MIN_TERRAIN_HEIGHT);
+
+                if (difference > 0) {
+                    hsv[1] -= difference * highlightingPower / 2;
+                } else {
+                    hsv[2] += difference * shadingPower / 2;
+                }
+            }
+            //DEPTH SHADING
+            let depth = (height - MIN_TERRAIN_HEIGHT) / (MAX_TERRAIN_HEIGHT - MIN_TERRAIN_HEIGHT);
             hsv[2] -= (1 - depth) * depthRelevance;
-
         }
-
         let rgb = hsv2rgb(hsv);
         //console.log(hsv);
         //console.log(rgb);
@@ -230,12 +290,14 @@ canvas.addEventListener("mouseenter", function (event) {
             squareBrush(mouseButton);
         }
         testFill();
+        showBrush();
     }, 1);
 })
 
 canvas.addEventListener("mouseleave", function (event) {
     if (updateInterval) {
         clearInterval(updateInterval);
+        testFill();
     }
 })
 
@@ -252,6 +314,7 @@ canvas.oncontextmenu = function () {
 
 document.getElementById("bhardness").addEventListener("change", function (event) {
     softnessModifier = event.target.value;
+    updateBrushPreview();
 })
 
 document.getElementById("bsize").addEventListener("change", function (event) {
@@ -260,6 +323,7 @@ document.getElementById("bsize").addEventListener("change", function (event) {
 
 document.getElementById("bstrenth").addEventListener("change", function (event) {
     brushStrenth = event.target.value;
+    updateBrushPreview();
 })
 
 //instant invokation
@@ -269,3 +333,4 @@ waterLevelHeight = (MAX_WATER_DEPTH - MIN_TERRAIN_HEIGHT) / WATER_LEVELS;
 softnessModifier = document.getElementById("bhardness").value;
 brushSize = document.getElementById("bsize").value;
 brushStrenth = document.getElementById("bstrenth").value;
+updateBrushPreview();
