@@ -11,16 +11,21 @@ let updateInterval;
 let brushSize = 100;
 let brushStrenth = 10;
 
-let shadingPower = 5;
-let highlightingPower = 7;
+let shadingPower = 7;
+let highlightingPower = 9;
 let depthRelevance = 0.3; //less 0-1 more
 let softnessModifier = 0.8; //softer 0-1 harder
-let waterColor = [0.6, 0.8, 1];
+let waterHue = 0.6;
+let waterLevelHeight;
 
-const MAX_TERRAIN_HEIGHT = 1000;
+const MAX_TERRAIN_HEIGHT = 2000;
 const MIN_TERRAIN_HEIGHT = 0;
+const MAX_WATER_DEPTH = -1000;
 const MAX_HEIGHT_COLOR_HSV = 0;
 const MIN_HEIGHT_COLOR_HSV = 0.35;
+const MIN_WATER_SAT = 0.35;
+const MAX_WATER_SAT = 1;
+const WATER_LEVELS = 5;
 
 let heightMap = [];
 for (let x = 0; x < cWidth; x++) {
@@ -80,12 +85,18 @@ function hsv2rgb(color) {
 }
 
 function heightToHSV(height) {
-    if (height != 0) {
-        ratio = (height - MIN_TERRAIN_HEIGHT) / (MAX_TERRAIN_HEIGHT - MIN_TERRAIN_HEIGHT);
-        hue = MIN_HEIGHT_COLOR_HSV * (1 - ratio);
+    //terrain
+    if (height >= MIN_TERRAIN_HEIGHT) {
+        let ratio = (height - MIN_TERRAIN_HEIGHT) / (MAX_TERRAIN_HEIGHT - MIN_TERRAIN_HEIGHT);
+        let hue = MIN_HEIGHT_COLOR_HSV * (1 - ratio);
         hsv = [hue, 1, 1];
-    } else {
-        hsv = waterColor;
+    } 
+    //water
+    else {
+        let hue = waterHue;
+        let level = Math.floor((height - MIN_TERRAIN_HEIGHT)/waterLevelHeight);
+        let sat = MIN_WATER_SAT + (MAX_WATER_SAT - MIN_WATER_SAT)/WATER_LEVELS*level;
+        hsv = [hue,sat,1];
     }
 
     return hsv;
@@ -103,7 +114,7 @@ function generateColorHeightMap() {
         let hsv = heightToHSV(height);
 
         //SHADING
-        if (column > 0 && height != 0) {
+        if (column > 0 && height >= MIN_TERRAIN_HEIGHT) {
             let neighbour = heightMap[column - 1][row];
             let difference = (height - neighbour) / (MAX_TERRAIN_HEIGHT - MIN_TERRAIN_HEIGHT);
             let depth = (height - MIN_TERRAIN_HEIGHT) / (MAX_TERRAIN_HEIGHT - MIN_TERRAIN_HEIGHT);
@@ -189,11 +200,11 @@ function squareBrush(mouseButton) {
                 if (heightMap[x][y] > MAX_TERRAIN_HEIGHT) {
                     heightMap[x][y] = MAX_TERRAIN_HEIGHT;
                 }
-            } else if (heightMap[x][y] > MIN_TERRAIN_HEIGHT && mouseButton == 2) {
+            } else if (heightMap[x][y] > MAX_WATER_DEPTH && mouseButton == 2) {
                 //console.log(heightMap[x][y])
                 heightMap[x][y] -= brushStrenth * hardness;
-                if (heightMap[x][y] < MIN_TERRAIN_HEIGHT) {
-                    heightMap[x][y] = MIN_TERRAIN_HEIGHT;
+                if (heightMap[x][y] < MAX_WATER_DEPTH) {
+                    heightMap[x][y] = MAX_WATER_DEPTH;
                 }
             }
         }
@@ -254,6 +265,7 @@ document.getElementById("bstrenth").addEventListener("change", function (event) 
 //instant invokation
 
 testFill();
+waterLevelHeight = (MAX_WATER_DEPTH - MIN_TERRAIN_HEIGHT) / WATER_LEVELS;
 softnessModifier = document.getElementById("bhardness").value;
 brushSize = document.getElementById("bsize").value;
 brushStrenth = document.getElementById("bstrenth").value;
