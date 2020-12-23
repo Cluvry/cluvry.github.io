@@ -1,0 +1,17 @@
+*{
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+#mainCanvas{
+    border-style: solid;
+}
+
+#brush_preview{
+    border-style: solid;
+    border-width: 1px;
+}
+
+button{
+    font-size: 50px;
+}
