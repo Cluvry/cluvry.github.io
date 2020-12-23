@@ -15,3 +15,7 @@
 button{
     font-size: 50px;
 }
+
+#brush_control_panel{
+    font-weight: bold;
+}
