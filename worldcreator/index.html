@@ -26,6 +26,17 @@
                 <table id="brush_control_panel">
                     <tr>
                         <td>
+                            <label>Brush shape:</label>
+                        </td>
+                        <td>
+                            <select name="brush_shape" id="bshape_select">
+                                <option value="1" selected="true">square</option>
+                                <option value="2">circle</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
                             <label>Brush size:</label>
                         </td>
                         <td>
@@ -37,10 +48,10 @@
                     </tr>
                     <tr>
                         <td>
-                            <label>Brush strenth:</label>
+                            <label>Brush strength:</label>
                         </td>
                         <td>
-                            <input id="bstrenth" type="range" name="bstrenth" min="10" max="100" step="1">
+                            <input id="bstrength" type="range" name="bstrenth" min="10" max="100" step="1">
                         </td>
                     </tr>
                     <tr>
@@ -48,8 +59,7 @@
                             <label>Brush hardness:</label>
                         </td>
                         <td>
-                            <input id="bhardness" type="range" name="bhardness" min="0" max="0.99"
-                                step="0.01">
+                            <input id="bhardness" type="range" name="bhardness" min="0" max="0.99" step="0.01">
                         </td>
                     </tr>
                 </table>
@@ -61,7 +71,8 @@
                             <label>Illumination direction</label>
                         </td>
                         <td>
-                            <input id="willumination_dir" type="range" name="willumination_dir" min="0" max="0.99" step="0.01">
+                            <input id="willumination_dir" type="range" name="willumination_dir" min="0" max="0.99"
+                                step="0.01">
                         </td>
                     </tr>
                     <tr>
@@ -71,19 +82,31 @@
                         <td>
                             <input id="wwater_level" type="range" name="wwater_level" min="0" max="0.99" step="0.01">
                         </td>
+                    <tr>
+                        <td>
+                            <button id="wreset">Reset</button>
+                        </td>
                     </tr>
-                </table>
-            </td>
         </tr>
     </table>
+    </td>
+    </tr>
+    </table>
+    <canvas id="hidden_canvas" width="800" height="600"></canvas>
 
     <script>
-        const canvas = document.getElementById('mainCanvas');
+const canvas = document.getElementById('mainCanvas');
 const ctx = canvas.getContext('2d');
 const cWidth = canvas.width;
 const cHeight = canvas.height;
 const brushPreview = document.getElementById("brush_preview");
+const hiddenCanvas = document.getElementById("hidden_canvas");
 const btx = brushPreview.getContext('2d');
+const bcWidth = brushPreview.width;
+const bcHeight = brushPreview.height;
+const htx = hiddenCanvas.getContext("2d");
+const hcWidth = hiddenCanvas.width;
+const hcHeight = hiddenCanvas.height;
 let mouseX = 0;
 let mouseY = 0;
 let mouseDown = false;
@@ -91,7 +114,13 @@ let mouseButton = 0;
 let updateInterval;
 
 let brushSize = 100;
-let brushStrenth = 10;
+let brushStrength = 10; //Max 100
+const Brushes = {
+    square: 1,
+    circle: 2
+};
+Object.freeze(Brushes);
+let selectedBrush = 1;
 
 let shadingPower = 7;
 let highlightingPower = 9;
@@ -109,6 +138,7 @@ const MIN_WATER_SAT = 0.35;
 const MAX_WATER_SAT = 1;
 const WATER_LEVELS = 5;
 
+
 let heightMap = [];
 for (let x = 0; x < cWidth; x++) {
     let column = []
@@ -123,48 +153,120 @@ for (let x = 0; x < cWidth; x++) {
 }*/
 
 function showBrush() {
-    ctx.beginPath();
-    ctx.rect(mouseX - brushSize / 2, mouseY - brushSize / 2, brushSize, brushSize);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.rect(mouseX - brushSize / 2 * softnessModifier, mouseY - brushSize / 2 * softnessModifier, brushSize * softnessModifier, brushSize * softnessModifier);
-    ctx.stroke();
+    switch (selectedBrush) {
+        case Brushes.square:
+            ctx.beginPath();
+            ctx.rect(mouseX - brushSize / 2, mouseY - brushSize / 2, brushSize, brushSize);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.rect(mouseX - brushSize / 2 * softnessModifier, mouseY - brushSize / 2 * softnessModifier, brushSize * softnessModifier, brushSize * softnessModifier);
+            ctx.stroke();
+            break;
+        case Brushes.circle:
+            /*
+            let id = ctx.createImageData(brushSize, brushSize);
+            let centerX = Math.round(brushSize / 2),
+                centerY = Math.round(brushSize / 2);
+            let y1, y2, p;
+            let index = 4 * brushSize * Math.round(brushSize / 2);
+            id.data[index + 3] = 255;
+            index = index + 4 * (brushSize - 1);
+            id.data[index + 3] = 255;
+
+            for (let x = 1; x < brushSize - 1; x++) {
+                if (x == centerX) {
+                    index = 4 * (Math.round(brushSize / 2) - 1)
+                    id.data[index + 3] = 255;
+                    index = 4 * (brushSize * (brushSize - 1) + Math.round(brushSize / 2)-1);
+                    id.data[index + 3] = 255;
+                } else {
+                    p = Math.round(Math.sqrt(centerY * centerY - (x - centerX) * (x - centerX)));
+                    y1 = centerY + p;
+                    y2 = centerY - p;
+                    index= 4*(brushSize*y1+(x-1));
+                    id.data[index + 3] = 255;
+                    index= 4*(brushSize*y2+(x-1));
+                    id.data[index + 3] = 255;
+                }
+            }
+            for (let y = 1; y < brushSize - 1; y++) {
+                if (y == centerY) {
+                    index = 4 * (Math.round(brushSize / 2) - 1)
+                    id.data[index + 3] = 255;
+                    index = 4 * (brushSize * (brushSize - 1) + Math.round(brushSize / 2)-1);
+                    id.data[index + 3] = 255;
+                } else {
+                    p = Math.round(Math.sqrt(centerY * centerY - (y - centerY) * (y - centerY)));
+                    y1 = centerX + p;
+                    y2 = centerX - p;
+                    index= 4*(brushSize*y1+(y-1));
+                    id.data[index + 3] = 255;
+                    index= 4*(brushSize*y2+(y-1));
+                    id.data[index + 3] = 255;
+                }
+            }
+            ctx.putImageData(id, mouseX - brushSize / 2, mouseY - brushSize / 2);*/
+            ctx.beginPath();
+            ctx.arc(mouseX, mouseY, brushSize / 2, 0, 2 * Math.PI, false);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(mouseX, mouseY, brushSize / 2 * softnessModifier, 0, 2 * Math.PI, false);
+            ctx.stroke();
+
+            break;
+    }
 }
 
 function updateBrushPreview() {
-    let id = btx.createImageData(100, 100);
-    let counter = 0;
-    for (let y = 0; y < 100; y++) {
-        for (let x = 0; x < 100; x++) {
-            let fromCenterXl = x / (50 - softnessModifier * 50);
-            let fromCenterXr = (100 - x) / (100 - (50 + softnessModifier * 50));
-            let fromCenterYu = y / (50 - softnessModifier * 50);
-            let fromCenterYd = (100 - y) / (100 - (50 + softnessModifier * 50));
-            let hardness;
-            if (x < 50) {
-                if (y < 50) {
-                    hardness = Math.min(fromCenterXl, fromCenterYu);
-                } else {
-                    hardness = Math.min(fromCenterXl, fromCenterYd);
-                }
-            } else {
-                if (y < 50) {
-                    hardness = Math.min(fromCenterXr, fromCenterYu);
-                } else {
-                    hardness = Math.min(fromCenterXr, fromCenterYd);
+    let id = btx.createImageData(101, 101);
+    switch (selectedBrush) {
+        case Brushes.square:
+            let counter = 0;
+            for (let y = 0; y < 101; y++) {
+                for (let x = 0; x < 101; x++) {
+                    let fromCenterXl = x / (50 - softnessModifier * 50);
+                    let fromCenterXr = (100 - x) / (100 - (50 + softnessModifier * 50));
+                    let fromCenterYu = y / (50 - softnessModifier * 50);
+                    let fromCenterYd = (100 - y) / (100 - (50 + softnessModifier * 50));
+                    let hardness;
+                    if (x < 50) {
+                        if (y < 50) {
+                            hardness = Math.min(fromCenterXl, fromCenterYu);
+                        } else {
+                            hardness = Math.min(fromCenterXl, fromCenterYd);
+                        }
+                    } else {
+                        if (y < 50) {
+                            hardness = Math.min(fromCenterXr, fromCenterYu);
+                        } else {
+                            hardness = Math.min(fromCenterXr, fromCenterYd);
+                        }
+                    }
+                    if (hardness > 1) {
+                        hardness = 1;
+                    }
+                    id.data[counter] = 0;
+                    id.data[counter + 1] = 0;
+                    id.data[counter + 2] = 0;
+                    id.data[counter + 3] = Math.floor(255 * hardness * (brushStrength / 100));
+                    counter += 4;
                 }
             }
-            if (hardness > 1) {
-                hardness = 1;
-            }
-            id.data[counter] = 0;
-            id.data[counter + 1] = 0;
-            id.data[counter + 2] = 0;
-            id.data[counter + 3] = Math.floor(255 * hardness * (brushStrenth / 100));
-            counter += 4;
-        }
+            btx.putImageData(id, 0, 0);
+            break;
+        case Brushes.circle:
+            btx.clearRect(0, 0, 101, 101);
+            let grd = btx.createRadialGradient(51, 51, 50 * softnessModifier, 51, 51, 50);
+            let hardness = "rgba(0,0,0," + brushStrength / 100 + ")";
+            grd.addColorStop(0, hardness);
+            grd.addColorStop(1, "rgba(0,0,0,0)");
+            btx.beginPath();
+            btx.arc(51, 51, 50, 0, 2 * Math.PI, false);
+            btx.fillStyle = grd;
+            btx.fill();
+            break;
     }
-    btx.putImageData(id, 0, 0);
+
 }
 
 function hsv2rgb(color) {
@@ -280,7 +382,7 @@ function generateColorHeightMap() {
 }
 
 
-function testFill() {
+function drawWorld() {
     ctx.clearRect(0, 0, cWidth, cHeight);
     id = generateColorHeightMap();
     ctx.putImageData(id, 0, 0);
@@ -293,7 +395,72 @@ function changeWaterLevel() {
     waterLevelHeight = (MAX_WATER_DEPTH - waterLevel) / WATER_LEVELS;
 }
 
+function reset() {
+    heightMap = [];
+    for (let x = 0; x < cWidth; x++) {
+        let column = []
+        for (let y = 0; y < cHeight; y++) {
+            column.push(MAX_TERRAIN_HEIGHT / 2);
+        }
+        heightMap.push(column);
+    }
+}
+
 //BRUSHES
+function circleBrush(mouseButton) {
+    htx.clearRect(0, 0, hcWidth, hcHeight);
+    let grd = htx.createRadialGradient(hcWidth / 2, hcHeight / 2, brushSize / 2 * softnessModifier, hcWidth / 2, hcHeight / 2, brushSize / 2);
+    let strenth = "rgba(0,0,0," + brushStrength / 100 + ")";
+    grd.addColorStop(0, strenth);
+    grd.addColorStop(1, "rgba(0,0,0,0)");
+    htx.beginPath();
+    htx.arc(hcWidth / 2, hcHeight / 2, brushSize / 2, 0, 2 * Math.PI, false);
+    htx.fillStyle = grd;
+    htx.fill();
+    let id = htx.getImageData(hcWidth / 2 - brushSize / 2, hcHeight / 2 - brushSize / 2, brushSize, brushSize);
+
+    let leftX = mouseX - brushSize / 2;
+    let rightX = mouseX + brushSize / 2;
+    let topY = mouseY - brushSize / 2;
+    let bottomY = mouseY + brushSize / 2;
+    let overL = 0, overR = 0, overT = 0, overB = 0;
+    if(leftX < 0){
+        overL = leftX * (-1);
+    }
+    if(rightX >= cWidth){
+        overR = rightX - cWidth;
+    }
+    if(topY < 0){
+        overT = topY * (-1);
+    }
+    if(bottomY >= cHeight){
+        overB = bottomY - cHeight;
+    }
+
+    let hardness;
+    let alpha;
+    for (let x = leftX + overL; x < rightX - overR; x++) {
+        for (let y = topY + overT; y < bottomY - overB; y++) {
+            alpha = 4* (brushSize * (y-topY) + (x-leftX)) +3;
+            hardness = id.data[alpha]/255;
+
+            if (heightMap[x][y] < MAX_TERRAIN_HEIGHT && mouseButton == 0) {
+                //console.log(heightMap[x][y])
+                heightMap[x][y] += brushStrength * hardness;
+                if (heightMap[x][y] > MAX_TERRAIN_HEIGHT) {
+                    heightMap[x][y] = MAX_TERRAIN_HEIGHT;
+                }
+            } else if (heightMap[x][y] > MAX_WATER_DEPTH && mouseButton == 2) {
+                //console.log(heightMap[x][y])
+                heightMap[x][y] -= brushStrength * hardness;
+                if (heightMap[x][y] < MAX_WATER_DEPTH) {
+                    heightMap[x][y] = MAX_WATER_DEPTH;
+                }
+            }
+        }
+    }
+}
+
 function squareBrush(mouseButton) {
     //console.log("raising");
     let leftX = 0;
@@ -339,13 +506,13 @@ function squareBrush(mouseButton) {
                 //console.log(heightMap[x][y])
 
 
-                heightMap[x][y] += brushStrenth * hardness;
+                heightMap[x][y] += brushStrength * hardness;
                 if (heightMap[x][y] > MAX_TERRAIN_HEIGHT) {
                     heightMap[x][y] = MAX_TERRAIN_HEIGHT;
                 }
             } else if (heightMap[x][y] > MAX_WATER_DEPTH && mouseButton == 2) {
                 //console.log(heightMap[x][y])
-                heightMap[x][y] -= brushStrenth * hardness;
+                heightMap[x][y] -= brushStrength * hardness;
                 if (heightMap[x][y] < MAX_WATER_DEPTH) {
                     heightMap[x][y] = MAX_WATER_DEPTH;
                 }
@@ -370,9 +537,16 @@ canvas.addEventListener("mouseup", function (event) {
 canvas.addEventListener("mouseenter", function (event) {
     updateInterval = setInterval(function () {
         if (mouseDown && (mouseButton == 0 || mouseButton == 2)) {
-            squareBrush(mouseButton);
+            switch (selectedBrush) {
+                case Brushes.square:
+                    squareBrush(mouseButton);
+                    break;
+                case Brushes.circle:
+                    circleBrush(mouseButton);
+                    break;
+            }
         }
-        testFill();
+        drawWorld();
         showBrush();
     }, 1);
 })
@@ -380,7 +554,7 @@ canvas.addEventListener("mouseenter", function (event) {
 canvas.addEventListener("mouseleave", function (event) {
     if (updateInterval) {
         clearInterval(updateInterval);
-        testFill();
+        drawWorld();
     }
 })
 
@@ -394,6 +568,12 @@ canvas.oncontextmenu = function () {
 }
 
 //Brush control
+document.getElementById("bshape_select").addEventListener("change", function (event) {
+    console.log(selectedBrush);
+    selectedBrush = Number(event.target.value);
+    console.log(selectedBrush);
+    updateBrushPreview();
+})
 
 document.getElementById("bhardness").addEventListener("change", function (event) {
     softnessModifier = event.target.value;
@@ -404,24 +584,32 @@ document.getElementById("bsize").addEventListener("change", function (event) {
     brushSize = event.target.value;
 })
 
-document.getElementById("bstrenth").addEventListener("change", function (event) {
-    brushStrenth = event.target.value;
+document.getElementById("bstrength").addEventListener("change", function (event) {
+    brushStrength = event.target.value;
     updateBrushPreview();
 })
 
-document.getElementById("wwater_level").addEventListener("change", function(){
+//World control
+
+document.getElementById("wwater_level").addEventListener("change", function () {
     changeWaterLevel();
-    testFill();
+    drawWorld();
 })
+
+document.getElementById("wreset").onclick = function () {
+    reset();
+    drawWorld();
+}
 
 //instant invokation
 
 softnessModifier = document.getElementById("bhardness").value;
 brushSize = document.getElementById("bsize").value;
-brushStrenth = document.getElementById("bstrenth").value;
+brushStrength = document.getElementById("bstrength").value;
 waterLevel = MAX_WATER_DEPTH + document.getElementById("wwater_level").value * (MAX_TERRAIN_HEIGHT - MAX_WATER_DEPTH);
+
 waterLevelHeight = (MAX_WATER_DEPTH - waterLevel) / WATER_LEVELS;
-testFill();
+drawWorld();
 updateBrushPreview();
     </script>
     </body>
